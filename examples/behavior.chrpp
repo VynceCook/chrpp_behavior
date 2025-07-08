@@ -1,0 +1,317 @@
+/*
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the Apache License, Version 2.0.
+ *
+ *  Copyright:
+ *     2025, Vincent Barichard <Vincent.Barichard@univ-angers.fr>
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
+
+#include <iostream>
+#include <chrpp.hh>
+
+#include <options.hpp>
+#include <strategy.hpp>
+
+/**
+ * @brief Decorate a node of a chr::Strategy for pretty printing
+ *
+ * The default QDecorator is dedicated to quantified problem with exists and forall
+ * quantifier. The printing alternates "ex" and "fa" symbols to show the user the
+ * type of the node.
+ */
+template< typename S >
+struct QDecorator
+{
+	using Node = typename S::Node;
+
+	/**
+	 * Decorate the value \a e of the current node
+	 * @param n The node do decorate
+	 * @param d The depth of node \a n
+	 * @return A string representation of \a n
+	 */
+	std::string decorate(const Node& n, unsigned int d)
+	{
+		std::string str;
+		str = "|";
+		str += ((d % 2)?"E":"FA");
+		str += " ";
+		str += chr::TIW::to_string(n.value());
+		str += "|";
+		return str;
+	}
+
+	/**
+	 * Decorate the leaf \a e of the current node
+	 * @param n The node do decorate
+	 * @param d The depth of node \a n
+	 * @return A string representation of \a n
+	 */
+	std::string decorate_leaf(const Node& n, unsigned int d)
+	{
+		std::string str;
+		str = "|";
+		str += ((d % 2)?"E":"FA");
+		str += " ";
+		str += chr::TIW::to_string(n.value());
+		str += "|";
+		return str;
+	}
+
+	/**
+	 * Decorate the left part of a list of nodes (children) for a given node
+	 * @param n The node do decorate
+	 * @param d The depth of node \a n
+	 * @return A string representation of the left symbol
+	 */
+	std::string left(const Node&, unsigned int d)
+	{
+		return ((d % 2)?std::string("<"):std::string(""));
+	}
+
+	/**
+	 * Decorate the right part of a list of nodes (children) for a given node
+	 * @param n The node do decorate
+	 * @param d The depth of node \a n
+	 * @return A string representation of the right symbol
+	 */
+	std::string right(const Node&, unsigned int d)
+	{
+		return ((d % 2)?std::string(">"):std::string(""));
+	}
+
+	/**
+	 * Gives the separator of elements of a list of nodes (children) for a given node
+	 * @param n The node do decorate
+	 * @param d The depth of node \a n
+	 * @return A string representation of the separator
+	 */
+	std::string sep(const Node&, unsigned int)
+	{
+		return std::string(";");
+	}
+};
+
+/**
+ * @brief BehaviorPrint Helper
+ * The BehaviorPrintHelper is a helper class which contains the loaded instance
+ * and specific printing functions to print the resulting strategy.
+ *
+ * \ingroup Examples
+ */
+struct BehaviorPrintHelper
+{
+	chr::Strategy< unsigned int > m_solution;	///< The result solution of QProblem
+
+	/**
+	 * Print the constraints of the store.
+	 */
+	template <typename T>
+	void print(T& space)
+	{
+		auto it = space.chr_store_begin();
+		while (!it.at_end())
+		{
+			std::cout << it.to_string() << std::endl;
+			++it;
+		}
+		if (!chr::failed())
+		{
+			std::cout << "------------------------------------" << std::endl;
+			std::cout << m_solution.to_string(QDecorator<chr::Strategy< unsigned int>>()) << std::endl;
+			std::cout << m_solution.to_string() << std::endl;
+			std::cout << std::endl;
+		}
+	}
+};
+
+inline void set_value(unsigned int& dest, const unsigned int& value) {
+    dest = value;
+}
+
+/**
+ * @brief Behavior min-max
+ * \ingroup Examples
+ *
+	<CHR name="BehaviorMinMax" parameters="BehaviorPrintHelper& bh">
+		<chr_constraint> explore_max(+unsigned int,+unsigned int)
+		explore_max @	explore_max(_, 0u) <=> success();;
+							explore_max(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: Min
+									n=1u,
+									count=upper_bound,
+									behavior((count<upper_bound) || (n>upper_bound), n=n+1, (count=count-1,n=n+1), count>=upper_bound, , , (
+										   bh.m_solution.add_child(n),
+										   explore_min(2 * n, NbRemainingMatches - n)
+									) );;
+
+		<chr_constraint> explore_min(+unsigned int,+unsigned int)
+		explore_min @	explore_min(_, 0u) <=> failure();;
+							explore_min(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: Max
+									n=1u,
+									count=0u,
+									behavior((count>=1) || (n>upper_bound), (count=count+1,n=n+1), n=n+1, count>=1, , , (
+										   bh.m_solution.drop_subtree(),
+										   bh.m_solution.add_child(n),
+										   explore_max(2 * n, NbRemainingMatches - n)
+									) );;
+	</CHR>
+ */
+
+/**
+ * @brief Behavior alpha-beta
+ * \ingroup Examples
+ *
+	<CHR name="BehaviorAlphaBeta" parameters="BehaviorPrintHelper& bh, unsigned int& alpha, unsigned int& beta">
+		<chr_constraint> explore_max(+unsigned int,+unsigned int)
+		explore_max @	explore_max(_, 0u) <=> success();;
+							explore_max(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: Max
+									n=1u,
+									count=upper_bound,
+									behavior(((upper_bound-count)>beta) || (count<upper_bound) || (n>upper_bound), n=n+1, (count=count-1,n=n+1), count>=upper_bound, set_value(beta,upper_bound-count), , (
+										   bh.m_solution.add_child(n),
+										   explore_min(2 * n, NbRemainingMatches - n)
+									) );;
+
+		<chr_constraint> explore_min(+unsigned int,+unsigned int)
+		explore_min @	explore_min(_, 0u) <=> failure();;
+							explore_min(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: Min
+									n=1u,
+									count=0u,
+									behavior((count>alpha) || (count>=1) || (n>upper_bound), (count=count+1,n=n+1), n=n+1, count>=1, set_value(alpha,count), , (
+										   bh.m_solution.drop_subtree(),
+										   bh.m_solution.add_child(n),
+										   explore_max(2 * n, NbRemainingMatches - n)
+									) );;
+	</CHR>
+ */
+
+/**
+ * @brief Behavior success rate
+ * \ingroup Examples
+ *
+	<CHR name="BehaviorSuccessRate" parameters="BehaviorPrintHelper& bh, float rate">
+		<chr_constraint> explore_successrate(+unsigned int,+unsigned int)
+		explore_successrate @	explore_successrate(_, 0u) <=> success();;
+							explore_successrate(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: SuccessRate
+									n=1u,
+									nb_succeeded=0u,
+                                    nb_to_succeed=(rate*upper_bound),
+									behavior((nb_succeeded>=nb_to_succeed) || (n>upper_bound) , (nb_succeeded=nb_succeeded+1,n=n+1), n=n+1, nb_succeeded>=nb_to_succeed, , , (
+										   bh.m_solution.add_child(n),
+										   explore_exists(2 * n, NbRemainingMatches - n)
+									) );;
+
+		<chr_constraint> explore_exists(+unsigned int,+unsigned int)
+		explore_exists @	explore_exists(_, 0u) <=> failure();;
+							explore_exists(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: Exists
+									n=1u,
+									res=false,
+									behavior(res || (n>upper_bound), (res=true,n=n+1), n=n+1, res, , , (
+										   bh.m_solution.drop_subtree(),
+										   bh.m_solution.add_child(n),
+										   explore_successrate(2 * n, NbRemainingMatches - n)
+									) );;
+	</CHR>
+ */
+
+int main(int argc, const char *argv[])
+{
+	TRACE( chr::Log::register_flags(chr::Log::ALL); )
+	Options options = parse_options(argc, argv, {
+			{ "print_solution", "ps", false, "Print the result solution if the problem has a winning strategy"},
+			{ "behavior", "b", true, "behavior to use (min-max, alpha-beta, success-rate), default min-max"},
+			{ "", "", true, "Number of initial matches"}
+	});
+
+    unsigned int behavior = 0;
+	Options_values values;
+	if (has_option("", options, values))
+	{
+        Options_values values_2;
+		if (has_option("behavior", options, values_2))
+		{
+			if (values_2[0].str() == "min-max")
+                behavior = 0;
+            else if (values_2[0].str() == "alpha-beta")
+                behavior = 1;
+            else if (values_2[0].str() == "success-rate")
+                behavior = 2;
+            else {
+                std::cout << "Wrong behavior name: " << values_2[0].str() << std::endl << std::endl;
+                return 0;
+            }
+
+        }
+		int nb_matches = values[0].i();
+		BehaviorPrintHelper bh;
+        switch (behavior) {
+            case 0: {
+                std::cout << "Behavior Min-Max" << std::endl;
+		        auto space = BehaviorMinMax::create(bh);
+		        CHR_RUN(
+		        		space->explore_min(nb_matches - 1, nb_matches);
+		        	   )
+		        if (has_option("print_solution", options))
+		        	bh.print(*space);
+                break;
+            }
+            case 1: {
+                std::cout << "Behavior Alpha-Beta" << std::endl;
+                unsigned int alpha = std::numeric_limits<int>::max(); 
+                unsigned int beta = std::numeric_limits<int>::max(); 
+		        auto space = BehaviorAlphaBeta::create(bh,alpha,beta);
+		        CHR_RUN(
+		        		space->explore_min(nb_matches - 1, nb_matches);
+		        	   )
+		        if (has_option("print_solution", options))
+		        	bh.print(*space);
+                std::cout << "Alpha: " << alpha << ", beta: " << beta << std::endl;
+                break;
+            }
+            case 2: {
+                std::cout << "Behavior Success Rate" << std::endl;
+		        auto space = BehaviorSuccessRate::create(bh,0.66);
+		        CHR_RUN(
+		        		space->explore_exists(nb_matches - 1, nb_matches);
+		        	   )
+		        if (has_option("print_solution", options))
+		        	bh.print(*space);
+                break;
+            }
+        }
+        if (chr::failed())
+            std::cout << "No solution" << std::endl;
+        else
+            std::cout << "A solution has been found" << std::endl;
+		chr::Statistics::print(std::cout);
+	} else {
+		std::cout << "Missing parameter" << std::endl << std::endl;
+		std::cout << options.m_help_message;
+	}
+	return 0;
+}

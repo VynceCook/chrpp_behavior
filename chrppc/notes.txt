@@ -1,0 +1,11 @@
+https://github.com/taocpp/PEGTL/blob/3.x/doc/Getting-Started.md
+
+analyze
+tracer
+
+https://github.com/taocpp/PEGTL/blob/3.x/doc/Installing-and-Using.md
+Cmake comment utiliser PEGTL avec un projet CMAKE
+
+Je dois pouvoir attraper un échec local et le reproprager au besoin :
+a = toto(3), a # catch_failure          // Avec toto une contrainte CHR
+Avec un try(a, toto(3))
