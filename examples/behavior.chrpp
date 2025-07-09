@@ -153,8 +153,8 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Min
 									n=1u,
-									count=upper_bound,
-									behavior((count<upper_bound) || (n>upper_bound), n=n+1, (count=count-1,n=n+1), count>=upper_bound, , , (
+									cost=1,
+									behavior((cost==0) || (n>upper_bound), (cost=std::min(cost,1),n=n+1), (cost=std::min(cost,0),n=n+1), cost==1, , , (
 										   bh.m_solution.add_child(n),
 										   explore_min(2 * n, NbRemainingMatches - n)
 									) );;
@@ -165,8 +165,8 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Max
 									n=1u,
-									count=0u,
-									behavior((count>=1) || (n>upper_bound), (count=count+1,n=n+1), n=n+1, count>=1, , , (
+									cost=0,
+									behavior((cost==1) || (n>upper_bound), (cost=std::max(cost,1),n=n+1),(cost=std::max(cost,0),n=n+1), cost==1, , , (
 										   bh.m_solution.drop_subtree(),
 										   bh.m_solution.add_child(n),
 										   explore_max(2 * n, NbRemainingMatches - n)
@@ -183,10 +183,10 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
 		explore_max @	explore_max(_, 0u) <=> success();;
 							explore_max(NbMaxToTake, NbRemainingMatches) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
-									// behavior: Max
+									// behavior: Min
 									n=1u,
-									count=upper_bound,
-									behavior(((upper_bound-count)>beta) || (count<upper_bound) || (n>upper_bound), n=n+1, (count=count-1,n=n+1), count>=upper_bound, set_value(beta,upper_bound-count), , (
+									cost=1,
+									behavior((cost==0) || (n>upper_bound), (cost=std::min(cost,1),n=n+1), (cost=std::min(cost,0),n=n+1), cost==1, set_value(beta,cost), , (
 										   bh.m_solution.add_child(n),
 										   explore_min(2 * n, NbRemainingMatches - n)
 									) );;
@@ -195,10 +195,10 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
 		explore_min @	explore_min(_, 0u) <=> failure();;
 							explore_min(NbMaxToTake, NbRemainingMatches) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
-									// behavior: Min
+									// behavior: Max
 									n=1u,
-									count=0u,
-									behavior((count>alpha) || (count>=1) || (n>upper_bound), (count=count+1,n=n+1), n=n+1, count>=1, set_value(alpha,count), , (
+									cost=0,
+									behavior((cost==1) || (n>upper_bound), (cost=std::max(cost,1),n=n+1),(cost=std::max(cost,0),n=n+1), cost==1, set_value(alpha,cost), , (
 										   bh.m_solution.drop_subtree(),
 										   bh.m_solution.add_child(n),
 										   explore_max(2 * n, NbRemainingMatches - n)
