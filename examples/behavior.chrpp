@@ -209,8 +209,6 @@ inline void set_value(int& dest, const int& value) {
     dest = value;
 }
 
-inline chr::ES_CHR failurebis() { return chr::failure(); }
-
 /**
  * @brief Behavior alpha-beta
  * \ingroup Examples
@@ -224,10 +222,9 @@ inline chr::ES_CHR failurebis() { return chr::failure(); }
 									// Node Min
 									n=1u,
 									cost=p_infty,
-									behavior(((alpha >= cost) || (n>upper_bound)), n=n+1, n=n+1, true, , , (
+									behavior(((cost < alpha) || (n>upper_bound)), n=n+1, n=n+1, true, , , (
 										   explore_max(2 * n, NbRemainingMatches - n, R),
                                            cost=std::min(cost,*R),
-                                           (alpha >= cost?failurebis():true),
                                            set_value(beta,std::min(beta,cost))
 									) ),
                                     Res %= cost;;
@@ -238,10 +235,9 @@ inline chr::ES_CHR failurebis() { return chr::failure(); }
 									// Node Max
 									n=1u,
 									cost=m_infty,
-									behavior(((cost >= beta) || (n>upper_bound)), n=n+1,n=n+1, true, , , (
+									behavior(((cost > beta) || (n>upper_bound)), n=n+1,n=n+1, true, , , (
 										   explore_min(2 * n, NbRemainingMatches - n, R),
                                            cost=std::max(cost,*R),
-                                           (cost >= beta?failurebis():true),
                                            set_value(alpha,std::max(alpha,cost))
 									) ),
                                     Res %= cost;;
