@@ -138,10 +138,6 @@ struct BehaviorPrintHelper
 	}
 };
 
-inline void set_value(unsigned int& dest, const unsigned int& value) {
-    dest = value;
-}
-
 /**
  * @brief Behavior exist forall
  * \ingroup Examples
@@ -185,57 +181,70 @@ static const int m_infty = std::numeric_limits<int>::min();
 		explore_min @	explore_min(_, 0u, R) <=> R %= 1;;
 						explore_min(NbMaxToTake, NbRemainingMatches, Res) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
-									// behavior: Min
+									// Node Min
 									n=1u,
 									cost=p_infty,
-									last_cost=p_infty, 
-									behavior((n>upper_bound), (cost=std::min(cost,last_cost),n=n+1), n=n+1, true, , , (
-										   explore_max(2 * n, NbRemainingMatches - n, RRRRY),
-                                           last_cost = *RRRRY
+									behavior((n>upper_bound), n=n+1, n=n+1, true, , , (
+										   explore_max(2 * n, NbRemainingMatches - n, R),
+                                           cost=std::min(cost,*R)
 									) ),
                                     Res %= cost;;
 
 		explore_max @	explore_max(_, 0u, R) <=> R %= 0;;
 						explore_max(NbMaxToTake, NbRemainingMatches, Res) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
-									// behavior: Max
+									// Node Max
 									n=1u,
 									cost=m_infty,
-									last_cost=m_infty, 
-									behavior((n>upper_bound), (cost=std::max(cost,last_cost),n=n+1),n=n+1, true, , , (
-										   explore_min(2 * n, NbRemainingMatches - n, RRRR),
-                                           last_cost = *RRRR
+									behavior((n>upper_bound), n=n+1, n=n+1, true, , , (
+										   explore_min(2 * n, NbRemainingMatches - n, R),
+                                           cost=std::max(cost,*R)
 									) ),
                                     Res %= cost;;
 	</CHR>
  */
 
+
+inline void set_value(int& dest, const int& value) {
+    dest = value;
+}
+
+inline chr::ES_CHR failurebis() { return chr::failure(); }
+
 /**
  * @brief Behavior alpha-beta
  * \ingroup Examples
  *
-	<CHR name="BehaviorAlphaBeta" parameters="unsigned int& alpha, unsigned int& beta">
-		<chr_constraint> explore_beta(+unsigned int,+unsigned int)
-		<chr_constraint> explore_alpha(+unsigned int,+unsigned int)
-		explore_beta @	explore_beta(_, 0u) <=> success();;
-						explore_beta(NbMaxToTake, NbRemainingMatches) <=>
+	<CHR name="BehaviorAlphaBeta" parameters="int& alpha, int& beta">
+		<chr_constraint> explore_min(+unsigned int,+unsigned int, ?int)
+		<chr_constraint> explore_max(+unsigned int,+unsigned int, ?int)
+		explore_min @	explore_min(_, 0u,R) <=> R %= 1;;
+						explore_min(NbMaxToTake, NbRemainingMatches, Res) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
-									// behavior: Min
+									// Node Min
 									n=1u,
-									cost=1,
-									behavior((cost==0) || (n>upper_bound), (cost=std::min(cost,1),n=n+1), (cost=std::min(cost,0),n=n+1), cost==1, set_value(beta,cost), , (
-										   explore_alpha(2 * n, NbRemainingMatches - n)
-									) );;
+									cost=p_infty,
+									behavior(((alpha >= cost) || (n>upper_bound)), n=n+1, n=n+1, true, , , (
+										   explore_max(2 * n, NbRemainingMatches - n, R),
+                                           cost=std::min(cost,*R),
+                                           (alpha >= cost?failurebis():true),
+                                           set_value(beta,std::min(beta,cost))
+									) ),
+                                    Res %= cost;;
 
-		explore_alpha @	explore_alpha(_, 0u) <=> failure();;
-						explore_alpha(NbMaxToTake, NbRemainingMatches) <=>
+		explore_max @	explore_max(_, 0u,R) <=> R %= 0;;
+						explore_max(NbMaxToTake, NbRemainingMatches,Res) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
-									// behavior: Max
+									// Node Max
 									n=1u,
-									cost=0,
-									behavior((cost==1) || (n>upper_bound), (cost=std::max(cost,1),n=n+1),(cost=std::max(cost,0),n=n+1), cost==1, set_value(alpha,cost), , (
-										   explore_beta(2 * n, NbRemainingMatches - n)
-									) );;
+									cost=m_infty,
+									behavior(((cost >= beta) || (n>upper_bound)), n=n+1,n=n+1, true, , , (
+										   explore_min(2 * n, NbRemainingMatches - n, R),
+                                           cost=std::max(cost,*R),
+                                           (cost >= beta?failurebis():true),
+                                           set_value(alpha,std::max(alpha,cost))
+									) ),
+                                    Res %= cost;;
 	</CHR>
  */
 
@@ -324,14 +333,16 @@ int main(int argc, const char *argv[])
                 break;
             }
             case 2: {
+                chr::Logical_var<int> Res;
                 std::cout << "Behavior Alpha-Beta" << std::endl;
-                unsigned int alpha = std::numeric_limits<int>::max(); 
-                unsigned int beta = std::numeric_limits<int>::max(); 
+                int alpha = std::numeric_limits<int>::min(); 
+                int beta = std::numeric_limits<int>::max(); 
 		        auto space = BehaviorAlphaBeta::create(alpha,beta);
 		        CHR_RUN(
-		        		space->explore_alpha(nb_matches - 1, nb_matches);
+		        		space->explore_max(nb_matches - 1, nb_matches,Res);
 		        	   )
                 std::cout << "Alpha: " << alpha << ", beta: " << beta << std::endl;
+                std::cout << "Result value : " << *Res << std::endl;
                 break;
             }
             case 3: {

@@ -272,7 +272,7 @@ namespace chr::compiler::ast
 
 	PtrExpression& TernaryExpression::child3()
 	{
-		return _e2;
+		return _e3;
 	}
 
 	Expression* TernaryExpression::clone() const
