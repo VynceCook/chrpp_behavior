@@ -143,34 +143,70 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
 }
 
 /**
+ * @brief Behavior exist forall
+ * \ingroup Examples
+ *
+	<CHR name="BehaviorExistForall" parameters="BehaviorPrintHelper& bh">
+		<chr_constraint> explore_forall(+unsigned int,+unsigned int)
+		<chr_constraint> explore_exists(+unsigned int,+unsigned int)
+		explore_forall @	explore_forall(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: ForAll
+									n=1u,
+									res=true,
+									behavior((!res || (n>upper_bound)) , n=n+1, (res=false,n=n+1), res, , , (
+										   bh.m_solution.add_child(n),
+										   explore_exists(2 * n, NbRemainingMatches - n)
+									) );;
+
+		explore_exists @	explore_exists(NbMaxToTake, NbRemainingMatches) <=>
+									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
+									// behavior: Exists
+									n=1u,
+									res=false,
+									behavior(res || (n>upper_bound), (res=true,n=n+1), n=n+1, res, , , (
+										   bh.m_solution.drop_subtree(),
+										   bh.m_solution.add_child(n),
+										   explore_forall(2 * n, NbRemainingMatches - n)
+									) );;
+	</CHR>
+ */
+
+static const int p_infty = std::numeric_limits<int>::max();
+static const int m_infty = std::numeric_limits<int>::min();
+
+/**
  * @brief Behavior min-max
  * \ingroup Examples
  *
-	<CHR name="BehaviorMinMax" parameters="BehaviorPrintHelper& bh">
-		<chr_constraint> explore_max(+unsigned int,+unsigned int)
-		explore_max @	explore_max(_, 0u) <=> success();;
-							explore_max(NbMaxToTake, NbRemainingMatches) <=>
+	<CHR name="BehaviorMinMax">
+		<chr_constraint> explore_min(+unsigned int,+unsigned int, ?int)
+		<chr_constraint> explore_max(+unsigned int,+unsigned int, ?int)
+		explore_min @	explore_min(_, 0u, R) <=> R %= 1;;
+						explore_min(NbMaxToTake, NbRemainingMatches, Res) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Min
 									n=1u,
-									cost=1,
-									behavior((cost==0) || (n>upper_bound), (cost=std::min(cost,1),n=n+1), (cost=std::min(cost,0),n=n+1), cost==1, , , (
-										   bh.m_solution.add_child(n),
-										   explore_min(2 * n, NbRemainingMatches - n)
-									) );;
+									cost=p_infty,
+									last_cost=p_infty, 
+									behavior((n>upper_bound), (cost=std::min(cost,last_cost),n=n+1), n=n+1, true, , , (
+										   explore_max(2 * n, NbRemainingMatches - n, RRRRY),
+                                           last_cost = *RRRRY
+									) ),
+                                    Res %= cost;;
 
-		<chr_constraint> explore_min(+unsigned int,+unsigned int)
-		explore_min @	explore_min(_, 0u) <=> failure();;
-							explore_min(NbMaxToTake, NbRemainingMatches) <=>
+		explore_max @	explore_max(_, 0u, R) <=> R %= 0;;
+						explore_max(NbMaxToTake, NbRemainingMatches, Res) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Max
 									n=1u,
-									cost=0,
-									behavior((cost==1) || (n>upper_bound), (cost=std::max(cost,1),n=n+1),(cost=std::max(cost,0),n=n+1), cost==1, , , (
-										   bh.m_solution.drop_subtree(),
-										   bh.m_solution.add_child(n),
-										   explore_max(2 * n, NbRemainingMatches - n)
-									) );;
+									cost=m_infty,
+									last_cost=m_infty, 
+									behavior((n>upper_bound), (cost=std::max(cost,last_cost),n=n+1),n=n+1, true, , , (
+										   explore_min(2 * n, NbRemainingMatches - n, RRRR),
+                                           last_cost = *RRRR
+									) ),
+                                    Res %= cost;;
 	</CHR>
  */
 
@@ -178,30 +214,27 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
  * @brief Behavior alpha-beta
  * \ingroup Examples
  *
-	<CHR name="BehaviorAlphaBeta" parameters="BehaviorPrintHelper& bh, unsigned int& alpha, unsigned int& beta">
-		<chr_constraint> explore_max(+unsigned int,+unsigned int)
-		explore_max @	explore_max(_, 0u) <=> success();;
-							explore_max(NbMaxToTake, NbRemainingMatches) <=>
+	<CHR name="BehaviorAlphaBeta" parameters="unsigned int& alpha, unsigned int& beta">
+		<chr_constraint> explore_beta(+unsigned int,+unsigned int)
+		<chr_constraint> explore_alpha(+unsigned int,+unsigned int)
+		explore_beta @	explore_beta(_, 0u) <=> success();;
+						explore_beta(NbMaxToTake, NbRemainingMatches) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Min
 									n=1u,
 									cost=1,
 									behavior((cost==0) || (n>upper_bound), (cost=std::min(cost,1),n=n+1), (cost=std::min(cost,0),n=n+1), cost==1, set_value(beta,cost), , (
-										   bh.m_solution.add_child(n),
-										   explore_min(2 * n, NbRemainingMatches - n)
+										   explore_alpha(2 * n, NbRemainingMatches - n)
 									) );;
 
-		<chr_constraint> explore_min(+unsigned int,+unsigned int)
-		explore_min @	explore_min(_, 0u) <=> failure();;
-							explore_min(NbMaxToTake, NbRemainingMatches) <=>
+		explore_alpha @	explore_alpha(_, 0u) <=> failure();;
+						explore_alpha(NbMaxToTake, NbRemainingMatches) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Max
 									n=1u,
 									cost=0,
 									behavior((cost==1) || (n>upper_bound), (cost=std::max(cost,1),n=n+1),(cost=std::max(cost,0),n=n+1), cost==1, set_value(alpha,cost), , (
-										   bh.m_solution.drop_subtree(),
-										   bh.m_solution.add_child(n),
-										   explore_max(2 * n, NbRemainingMatches - n)
+										   explore_beta(2 * n, NbRemainingMatches - n)
 									) );;
 	</CHR>
  */
@@ -212,8 +245,8 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
  *
 	<CHR name="BehaviorSuccessRate" parameters="BehaviorPrintHelper& bh, float rate">
 		<chr_constraint> explore_successrate(+unsigned int,+unsigned int)
-		explore_successrate @	explore_successrate(_, 0u) <=> success();;
-							explore_successrate(NbMaxToTake, NbRemainingMatches) <=>
+		<chr_constraint> explore_exists(+unsigned int,+unsigned int)
+		explore_successrate @	explore_successrate(NbMaxToTake, NbRemainingMatches) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: SuccessRate
 									n=1u,
@@ -224,9 +257,7 @@ inline void set_value(unsigned int& dest, const unsigned int& value) {
 										   explore_exists(2 * n, NbRemainingMatches - n)
 									) );;
 
-		<chr_constraint> explore_exists(+unsigned int,+unsigned int)
-		explore_exists @	explore_exists(_, 0u) <=> failure();;
-							explore_exists(NbMaxToTake, NbRemainingMatches) <=>
+		explore_exists @	explore_exists(NbMaxToTake, NbRemainingMatches) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// behavior: Exists
 									n=1u,
@@ -244,7 +275,7 @@ int main(int argc, const char *argv[])
 	TRACE( chr::Log::register_flags(chr::Log::ALL); )
 	Options options = parse_options(argc, argv, {
 			{ "print_solution", "ps", false, "Print the result solution if the problem has a winning strategy"},
-			{ "behavior", "b", true, "behavior to use (min-max, alpha-beta, success-rate), default min-max"},
+			{ "behavior", "b", true, "behavior to use (exist-forall, min-max, alpha-beta, success-rate), default exist-forall"},
 			{ "", "", true, "Number of initial matches"}
 	});
 
@@ -255,12 +286,14 @@ int main(int argc, const char *argv[])
         Options_values values_2;
 		if (has_option("behavior", options, values_2))
 		{
-			if (values_2[0].str() == "min-max")
+			if (values_2[0].str() == "exist-forall")
                 behavior = 0;
-            else if (values_2[0].str() == "alpha-beta")
+            else if (values_2[0].str() == "min-max")
                 behavior = 1;
-            else if (values_2[0].str() == "success-rate")
+            else if (values_2[0].str() == "alpha-beta")
                 behavior = 2;
+            else if (values_2[0].str() == "success-rate")
+                behavior = 3;
             else {
                 std::cout << "Wrong behavior name: " << values_2[0].str() << std::endl << std::endl;
                 return 0;
@@ -271,29 +304,37 @@ int main(int argc, const char *argv[])
 		BehaviorPrintHelper bh;
         switch (behavior) {
             case 0: {
-                std::cout << "Behavior Min-Max" << std::endl;
-		        auto space = BehaviorMinMax::create(bh);
+                std::cout << "Behavior Exist ForAll" << std::endl;
+		        auto space = BehaviorExistForall::create(bh);
 		        CHR_RUN(
-		        		space->explore_min(nb_matches - 1, nb_matches);
+		        		space->explore_exists(nb_matches - 1, nb_matches);
 		        	   )
 		        if (has_option("print_solution", options))
 		        	bh.print(*space);
                 break;
             }
             case 1: {
-                std::cout << "Behavior Alpha-Beta" << std::endl;
-                unsigned int alpha = std::numeric_limits<int>::max(); 
-                unsigned int beta = std::numeric_limits<int>::max(); 
-		        auto space = BehaviorAlphaBeta::create(bh,alpha,beta);
+                chr::Logical_var<int> Res;
+                std::cout << "Behavior Min-Max" << std::endl;
+		        auto space = BehaviorMinMax::create();
 		        CHR_RUN(
-		        		space->explore_min(nb_matches - 1, nb_matches);
+		        		space->explore_max(nb_matches - 1, nb_matches, Res);
 		        	   )
-		        if (has_option("print_solution", options))
-		        	bh.print(*space);
-                std::cout << "Alpha: " << alpha << ", beta: " << beta << std::endl;
+                std::cout << "Result value : " << *Res << std::endl;
                 break;
             }
             case 2: {
+                std::cout << "Behavior Alpha-Beta" << std::endl;
+                unsigned int alpha = std::numeric_limits<int>::max(); 
+                unsigned int beta = std::numeric_limits<int>::max(); 
+		        auto space = BehaviorAlphaBeta::create(alpha,beta);
+		        CHR_RUN(
+		        		space->explore_alpha(nb_matches - 1, nb_matches);
+		        	   )
+                std::cout << "Alpha: " << alpha << ", beta: " << beta << std::endl;
+                break;
+            }
+            case 3: {
                 std::cout << "Behavior Success Rate" << std::endl;
 		        auto space = BehaviorSuccessRate::create(bh,0.66);
 		        CHR_RUN(
