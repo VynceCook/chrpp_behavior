@@ -188,7 +188,7 @@ static const int m_infty = std::numeric_limits<int>::min();
 										   explore_max(2 * n, NbRemainingMatches - n, R),
                                            cost=std::min(cost,*R)
 									) ),
-                                    Res %= cost;;
+									Res %= cost;;
 
 		explore_max @	explore_max(_, 0u, R) <=> R %= 0;;
 						explore_max(NbMaxToTake, NbRemainingMatches, Res) <=>
@@ -200,7 +200,7 @@ static const int m_infty = std::numeric_limits<int>::min();
 										   explore_min(2 * n, NbRemainingMatches - n, R),
                                            cost=std::max(cost,*R)
 									) ),
-                                    Res %= cost;;
+									Res %= cost;;
 	</CHR>
  */
 
@@ -227,7 +227,7 @@ inline void set_value(int& dest, const int& value) {
                                            cost=std::min(cost,*R),
                                            set_value(beta,std::min(beta,cost))
 									) ),
-                                    Res %= cost;;
+									Res %= cost;;
 
 		explore_max @	explore_max(_, 0u,R) <=> R %= 0;;
 						explore_max(NbMaxToTake, NbRemainingMatches,Res) <=>
@@ -240,7 +240,7 @@ inline void set_value(int& dest, const int& value) {
                                            cost=std::max(cost,*R),
                                            set_value(alpha,std::max(alpha,cost))
 									) ),
-                                    Res %= cost;;
+									Res %= cost;;
 	</CHR>
  */
 
