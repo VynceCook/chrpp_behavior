@@ -205,40 +205,38 @@ static const int m_infty = std::numeric_limits<int>::min();
  */
 
 
-inline void set_value(int& dest, const int& value) {
-    dest = value;
-}
-
 /**
  * @brief Behavior alpha-beta
  * \ingroup Examples
  *
-	<CHR name="BehaviorAlphaBeta" parameters="int& alpha, int& beta">
-		<chr_constraint> explore_min(+unsigned int,+unsigned int, ?int)
-		<chr_constraint> explore_max(+unsigned int,+unsigned int, ?int)
-		explore_min @	explore_min(_, 0u,R) <=> R %= 1;;
-						explore_min(NbMaxToTake, NbRemainingMatches, Res) <=>
+	<CHR name="BehaviorAlphaBeta">
+		<chr_constraint> explore_min(+unsigned int,+unsigned int, ?int, +int, +int)
+		<chr_constraint> explore_max(+unsigned int,+unsigned int, ?int, +int, +int)
+		explore_min @	explore_min(_, 0u,R,_,_) <=> R %= 1;;
+						explore_min(NbMaxToTake, NbRemainingMatches, Res, Alpha, Beta) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// Node Min
 									n=1u,
 									cost=p_infty,
-									behavior(((cost < alpha) || (n>upper_bound)), n=n+1, n=n+1, true, , , (
-										   explore_max(2 * n, NbRemainingMatches - n, R),
+									beta=*Beta,
+									behavior(((beta <= Alpha) || (n>upper_bound)), n=n+1, n=n+1, true, , , (
+										   explore_max(2 * n, NbRemainingMatches - n, R, Alpha, beta),
                                            cost=std::min(cost,*R),
-                                           set_value(beta,std::min(beta,cost))
+                                           beta=std::min(beta,cost)
 									) ),
 									Res %= cost;;
 
-		explore_max @	explore_max(_, 0u,R) <=> R %= 0;;
-						explore_max(NbMaxToTake, NbRemainingMatches,Res) <=>
+		explore_max @	explore_max(_, 0u,R,_,_) <=> R %= 0;;
+						explore_max(NbMaxToTake, NbRemainingMatches,Res,Alpha,Beta) <=>
 									upper_bound = std::min(*NbMaxToTake, *NbRemainingMatches),
 									// Node Max
 									n=1u,
 									cost=m_infty,
-									behavior(((cost > beta) || (n>upper_bound)), n=n+1,n=n+1, true, , , (
-										   explore_min(2 * n, NbRemainingMatches - n, R),
+									alpha=*Alpha,
+									behavior(((Beta <= alpha) || (n>upper_bound)), n=n+1,n=n+1, true, , , (
+										   explore_min(2 * n, NbRemainingMatches - n, R, alpha, Beta),
                                            cost=std::max(cost,*R),
-                                           set_value(alpha,std::max(alpha,cost))
+                                           alpha=std::max(alpha,cost)
 									) ),
 									Res %= cost;;
 	</CHR>
@@ -333,11 +331,10 @@ int main(int argc, const char *argv[])
                 std::cout << "Behavior Alpha-Beta" << std::endl;
                 int alpha = std::numeric_limits<int>::min(); 
                 int beta = std::numeric_limits<int>::max(); 
-		        auto space = BehaviorAlphaBeta::create(alpha,beta);
+		        auto space = BehaviorAlphaBeta::create();
 		        CHR_RUN(
-		        		space->explore_max(nb_matches - 1, nb_matches,Res);
+		        		space->explore_max(nb_matches - 1, nb_matches,Res,alpha,beta);
 		        	   )
-                std::cout << "Alpha: " << alpha << ", beta: " << beta << std::endl;
                 std::cout << "Result value : " << *Res << std::endl;
                 break;
             }
